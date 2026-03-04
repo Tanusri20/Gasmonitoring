@@ -16,19 +16,19 @@
 body{
 margin:0;
 font-family:Segoe UI;
-background:#0b1c24;
+background:#071d25;
 color:white;
 text-align:center;
 }
 
 h1{
 padding:20px;
+background:#0f2f3b;
 margin:0;
-background:#122b36;
 }
 
 .section{
-padding:20px;
+padding:25px;
 }
 
 .container{
@@ -39,33 +39,30 @@ gap:20px;
 }
 
 .card{
-flex:1 1 250px;
+flex:1 1 260px;
 padding:25px;
-border-radius:12px;
+border-radius:10px;
+background:#132f3b;
 font-size:20px;
 font-weight:bold;
-background:#1c2f38;
-box-shadow:0 0 15px rgba(0,0,0,0.6);
+box-shadow:0 0 15px rgba(0,0,0,0.5);
 }
 
 .mq7{border-left:6px solid #ff5722;}
-.mq2{border-left:6px solid #2196f3;}
+.mq2{border-left:6px solid #03a9f4;}
 .mq3{border-left:6px solid #9c27b0;}
 
 .status{
 display:inline-block;
-padding:12px 35px;
+padding:12px 40px;
 border-radius:25px;
-font-size:22px;
+font-size:24px;
 font-weight:bold;
 }
 
 .safe{background:#2ecc71;}
 .warning{background:#f39c12;}
-.danger{
-background:#e74c3c;
-animation:blink 1s infinite;
-}
+.danger{background:#e74c3c;animation:blink 1s infinite;}
 
 @keyframes blink{
 50%{opacity:0.4;}
@@ -76,14 +73,14 @@ display:flex;
 flex-wrap:wrap;
 justify-content:center;
 gap:20px;
-padding-top:20px;
+margin-top:25px;
 }
 
 .analysis-card{
 flex:1 1 300px;
-background:#16262f;
+background:#102832;
 padding:25px;
-border-radius:12px;
+border-radius:10px;
 font-size:18px;
 box-shadow:0 0 15px rgba(0,0,0,0.6);
 }
@@ -91,24 +88,13 @@ box-shadow:0 0 15px rgba(0,0,0,0.6);
 .green{color:#2ecc71;}
 .yellow{color:#f1c40f;}
 .orange{color:#e67e22;}
-.red{
-color:#e74c3c;
-font-weight:bold;
-animation:blink 1s infinite;
-}
+.red{color:#e74c3c;}
 
 #map{
 width:90%;
 height:400px;
-margin:30px auto;
+margin:40px auto;
 border-radius:15px;
-}
-
-@media(max-width:768px){
-.container, .analysis-container{
-flex-direction:column;
-align-items:center;
-}
 }
 
 </style>
@@ -121,9 +107,11 @@ align-items:center;
 <div class="section">
 
 <div class="container">
-  <div id="mq7" class="card mq7">MQ7 (CO)</div>
-  <div id="mq2" class="card mq2">MQ2 (Methane, LPG)</div>
-  <div id="mq3" class="card mq3">MQ3 (Ammonia)</div>
+
+<div id="mq7" class="card mq7">MQ7 (CO)</div>
+<div id="mq2" class="card mq2">MQ2 (Methane, LPG)</div>
+<div id="mq3" class="card mq3">MQ3 (Ammonia)</div>
+
 </div>
 
 <br>
@@ -133,21 +121,20 @@ align-items:center;
 
 <div class="analysis-container">
 
-  <div class="analysis-card">
-    <h3>Gas Spread Analysis</h3>
-    <div id="spreadStatus">Analyzing...</div>
-  </div>
+<div class="analysis-card">
+<h3>Gas Spread Analysis</h3>
+<div id="spreadStatus">Analyzing...</div>
+</div>
 
-  <div class="analysis-card">
-    <h3>Danger Prediction</h3>
-    <div id="dangerStatus">Analyzing...</div>
-  </div>
+<div class="analysis-card">
+<h3>Danger Prediction</h3>
+<div id="dangerStatus">Analyzing...</div>
+</div>
 
-  <!-- NEW LIDAR PANEL -->
-  <div class="analysis-card">
-    <h3>LiDAR Proximity Monitoring</h3>
-    <div id="lidarStatus">Analyzing...</div>
-  </div>
+<div class="analysis-card">
+<h3>LiDAR Proximity Monitoring</h3>
+<div id="lidarStatus">Analyzing...</div>
+</div>
 
 </div>
 
@@ -157,54 +144,66 @@ align-items:center;
 
 <script>
 
-// Firebase Config
+// FIREBASE CONFIG
 const firebaseConfig = {
-  apiKey: "AIzaSyC8RYdobKRYnhLMlWMIpQ9dU399UnSX0SE",
-  databaseURL: "https://tempproject-2dad0-default-rtdb.asia-southeast1.firebasedatabase.app"
+apiKey: "AIzaSyC8RYdobKRYnhLMlWMIpQ9dU399UnSX0SE",
+databaseURL: "https://tempproject-2dad0-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Map
-let map = L.map('map').setView([17.385044,78.486671],15);
+// MAP
+let map = L.map('map').setView([18.463926,83.660092],15);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 maxZoom:19
 }).addTo(map);
 
-let marker = L.marker([17.385044,78.486671]).addTo(map);
+let marker = L.marker([18.463926,83.660092]).addTo(map);
 
-// Firebase Listener
+
+// FIREBASE LISTENER
 db.ref("ESP32").on("value",snap=>{
 
 let d = snap.val();
 if(!d) return;
 
-document.getElementById("mq7").innerHTML="MQ7 (CO)<br>"+d.MQ7.toFixed(2)+" PPM";
-document.getElementById("mq2").innerHTML="MQ2 (Methane, LPG)<br>"+d.MQ2.toFixed(2)+" PPM";
-document.getElementById("mq3").innerHTML="MQ3 (Ammonia)<br>"+d.MQ3.toFixed(2)+" PPM";
+
+// GAS VALUES
+let mq7 = d.Gas.MQ7 || 0;
+let mq2 = d.Gas.MQ2 || 0;
+let mq3 = d.Gas.MQ3 || 0;
+
+document.getElementById("mq7").innerHTML="MQ7 (CO)<br>"+mq7.toFixed(2)+" PPM";
+document.getElementById("mq2").innerHTML="MQ2 (Methane, LPG)<br>"+mq2.toFixed(2)+" PPM";
+document.getElementById("mq3").innerHTML="MQ3 (Ammonia)<br>"+mq3.toFixed(2)+" PPM";
+
 
 // STATUS
+let status=d.Gas.Status;
+
 let s=document.getElementById("status");
-s.innerHTML=d.STATUS;
+s.innerHTML=status;
 s.className="status";
 
-if(d.STATUS=="SAFE") s.classList.add("safe");
-else if(d.STATUS=="WARNING") s.classList.add("warning");
+if(status=="SAFE") s.classList.add("safe");
+else if(status=="WARNING") s.classList.add("warning");
 else s.classList.add("danger");
 
-// -------- Spread Logic --------
-let spread = d.SpreadRate_PPM_per_sec || 0;
+
+// SPREAD ANALYSIS
+let spread = d.Gas.SpreadRate || 0;
+
 let spreadText="";
 let spreadClass="green";
 
-if(spread <= 2){
-spreadText="STABLE ENVIRONMENT ("+spread.toFixed(2)+" PPM/sec)";
+if(spread <=2){
+spreadText="STABLE ("+spread.toFixed(2)+" PPM/sec)";
 spreadClass="green";
 }
-else if(spread <= 8){
-spreadText="MODERATE RISE ("+spread.toFixed(2)+" PPM/sec)";
+else if(spread<=8){
+spreadText="MODERATE GAS RISE ("+spread.toFixed(2)+" PPM/sec)";
 spreadClass="yellow";
 }
 else{
@@ -215,25 +214,27 @@ spreadClass="red";
 document.getElementById("spreadStatus").innerHTML=
 "<span class='"+spreadClass+"'>"+spreadText+"</span>";
 
-// -------- Danger Prediction --------
-let timeDanger = d.TimeToDanger_sec || 0;
+
+// DANGER PREDICTION
+let time = d.Gas.TimeToDanger || 0;
+
 let dangerText="";
 let dangerClass="green";
 
-if(timeDanger == 0 && d.STATUS=="SAFE"){
+if(time==0 && status=="SAFE"){
 dangerText="NO IMMEDIATE RISK";
 dangerClass="green";
 }
-else if(timeDanger > 60){
-dangerText="APPROACHING RISK ("+Math.round(timeDanger)+" sec)";
+else if(time>60){
+dangerText="APPROACHING RISK ("+Math.round(time)+" sec)";
 dangerClass="yellow";
 }
-else if(timeDanger > 20){
-dangerText="HIGH RISK ("+Math.round(timeDanger)+" sec)";
+else if(time>20){
+dangerText="HIGH RISK ("+Math.round(time)+" sec)";
 dangerClass="orange";
 }
-else if(timeDanger > 0){
-dangerText="CRITICAL – EVACUATE ("+Math.round(timeDanger)+" sec)";
+else if(time>0){
+dangerText="CRITICAL - EVACUATE ("+Math.round(time)+" sec)";
 dangerClass="red";
 }
 else{
@@ -244,44 +245,30 @@ dangerClass="green";
 document.getElementById("dangerStatus").innerHTML=
 "<span class='"+dangerClass+"'>"+dangerText+"</span>";
 
-// -------- LIDAR DISPLAY --------
-let lidarDist = d.Lidar_Distance_cm || 0;
-let lidarState = d.Lidar_Status || "UNKNOWN";
 
-let lidarText="";
-let lidarClass="green";
+// LIDAR
+let lidarDist = d.Lidar.Distance_cm || 0;
+let lidarStat = d.Lidar.Status || "CLEAR";
 
-if(lidarState==="PERSON NEAR"){
-lidarText="CRITICAL – HUMAN DETECTED ("+lidarDist+" cm)";
-lidarClass="red";
-}
-else if(lidarState==="OBJECT DETECTED"){
-lidarText="WARNING – OBJECT IN PROXIMITY ("+lidarDist+" cm)";
-lidarClass="orange";
-}
-else if(lidarState==="CLEAR AREA"){
-lidarText="AREA CLEAR ("+lidarDist+" cm)";
-lidarClass="green";
-}
-else{
-lidarText="OUT OF RANGE";
-lidarClass="yellow";
-}
+let lidarColor="green";
+
+if(lidarStat=="PERSON NEAR") lidarColor="red";
+else if(lidarStat=="OBJECT DETECTED") lidarColor="orange";
 
 document.getElementById("lidarStatus").innerHTML=
-"<span class='"+lidarClass+"'>"+lidarText+"</span>";
+"<span class='"+lidarColor+"'>"+lidarStat+" ("+lidarDist+" cm)</span>";
 
-// Map Update
-let newLat=parseFloat(d.Latitude);
-let newLng=parseFloat(d.Longitude);
-marker.setLatLng([newLat,newLng]);
-map.setView([newLat,newLng],15);
+
+// MAP LOCATION
+let lat=d.Location.Latitude;
+let lon=d.Location.Longitude;
+
+marker.setLatLng([lat,lon]);
+map.setView([lat,lon],15);
 
 });
 
 </script>
 
 </body>
-
 </html>
-
