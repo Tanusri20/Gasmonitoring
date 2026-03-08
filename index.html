@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Automated Sewage Gas Monitoring with Safe Distance Estimation</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+
+<style>
+
+body{
+margin:0;
+font-family:Segoe UI;
+background:#0b1c24;
+color:white;
+text-align:center;
+}
+
+h1{
+padding:20px;
+margin:0;
+background:#122b36;
+font-size:22px;
+}
+
+.section{
+padding:20px;
+}
+
+.container{
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+gap:20px;
+}
+
+.card{
+flex:1 1 250px;
+padding:25px;
+border-radius:12px;
+font-size:20px;
+font-weight:bold;
+background:#1c2f38;
+box-shadow:0 0 15px rgba(0,0,0,0.6);
+}
+
+.mq7{border-left:6px solid #ff5722;}
+.mq2{border-left:6px solid #2196f3;}
+.mq3{border-left:6px solid #9c27b0;}
+
+.status{
+display:inline-block;
+padding:12px 35px;
+border-radius:25px;
+font-size:22px;
+font-weight:bold;
+}
+
+.safe{background:#2ecc71;}
+.warning{background:#f39c12;}
+.danger{
+background:#e74c3c;
+animation:blink 1s infinite;
+}
+
+@keyframes blink{
+50%{opacity:0.4;}
+}
+
+.analysis-container{
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+gap:20px;
+padding-top:20px;
+}
+
+.analysis-card{
+flex:1 1 300px;
+background:#16262f;
+padding:25px;
+border-radius:12px;
+font-size:18px;
+box-shadow:0 0 15px rgba(0,0,0,0.6);
+}
+
+.green{color:#2ecc71;}
+.yellow{color:#f1c40f;}
+.orange{color:#e67e22;}
+.red{
+color:#e74c3c;
+font-weight:bold;
+animation:blink 1s infinite;
+}
+
+#alertToast{
+display:none;
+position:fixed;
+bottom:30px;
+right:30px;
+background:#1c2f38;
+color:white;
+padding:15px 25px;
+border-radius:12px;
+font-size:16px;
+border-left:6px solid #2ecc71;
+box-shadow:0 0 20px rgba(0,0,0,0.8);
+z-index:9999;
+}
+
+#map{
+width:90%;
+height:400px;
+margin:30px auto;
+border-radius:15px;
+}
+
+@media(max-width:768px){
+.container, .analysis-container{
+flex-direction:column;
+align-items:center;
+}
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Automated Sewage Gas Monitoring with Safe Distance Estimation</h1>
+
+<div id="alertToast">📧 Alert email sent!</div>
+
+<div class="section">
+
+<div class="container">
+  <div id="mq7" class="card mq7">MQ7 (CO)<br>Loading...</div>
+  <div id="mq2" class="card mq2">MQ2 (Methane, LPG)<br>Loading...</div>
+  <div id="mq3" class="card mq3">MQ3 (Ammonia)<br>Loading...</div>
+</div>
+
+<br>
+
+<h2>Status</h2>
+<div id="status" class="status">Loading...</div>
+
+<div class="analysis-container">
+
+  <div class="analysis-card">
+    <h3>Gas Spread Analysis</h3>
+    <div id="spreadStatus">Analyzing...</div>
+  </div>
+
+  <div class="analysis-card">
+    <h3>Danger Prediction</h3>
+    <div id="dangerStatus">Analyzing...</div>
+  </div>
+
+  <div class="analysis-card">
+    <h3>LiDAR Proximity Monitoring</h3>
+    <div id="lidarStatus">Analyzing...</div>
+  </div>
+
+</div>
+
+</div>
+
+<div id="map"></div>
+
+<script>
+
+// =============================================
+//  HELPER
+// =============================================
+function safeNum(val) {
+  var n = parseFloat(val);
+  return isNaN(n) ? 0 : n;
+}
+
+// =============================================
+//  EMAILJS
+// =============================================
+emailjs.init("oiPJwfBlHOqnNO1Cf");
+var lastAlertStatus = "";
+
+function showToast(message, color) {
+  var toast = document.getElementById("alertToast");
+  toast.innerHTML = message;
+  toast.style.borderLeftColor = color || "#2ecc71";
+  toast.style.display = "block";
+  setTimeout(function() { toast.style.display = "none"; }, 4000);
+}
+
+function sendGasAlert(status, mq7, mq2, mq3, lat, lng) {
+  emailjs.send("service_ryd5wvg", "template_z9hvgfj", {
+    to_email: "tanusribongu21@gmail.com",
+    status: status,
+    mq7: safeNum(mq7).toFixed(2),
+    mq2: safeNum(mq2).toFixed(2),
+    mq3: safeNum(mq3).toFixed(2),
+    latitude: lat,
+    longitude: lng,
+    time: new Date().toLocaleString()
+  }).then(function() {
+    console.log("✅ Email sent! Status: " + status);
+    showToast(
+      status === "DANGER" ? "🚨 DANGER alert email sent!" : "⚠️ WARNING alert email sent!",
+      status === "DANGER" ? "#e74c3c" : "#f39c12"
+    );
+  }).catch(function(err) {
+    console.log("❌ Email failed:", err);
+    showToast("❌ Email failed. Check console.", "#e74c3c");
+  });
+}
+
+// =============================================
+//  FIREBASE
+// =============================================
+var firebaseConfig = {
+  apiKey: "AIzaSyC8RYdobKRYnhLMlWMIpQ9dU399UnSX0SE",
+  databaseURL: "https://tempproject-2dad0-default-rtdb.asia-southeast1.firebasedatabase.app"
+};
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
+
+// =============================================
+//  MAP — default Rajam, AP
+// =============================================
+var map = L.map('map').setView([18.46393, 83.66010], 15);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+var marker = L.marker([18.46393, 83.66010]).addTo(map);
+
+// =============================================
+//  READ ALL DATA from ESP32/
+// =============================================
+db.ref("ESP32").on("value", function(snap) {
+  var d = snap.val();
+  if (!d) {
+    console.log("No data at ESP32/ path");
+    return;
+  }
+
+  console.log("ESP32 data:", d);
+
+  // ---- Gas values from ESP32/Gas/ ----
+  var g = d.Gas || {};
+  var mq7 = safeNum(g.MQ7);
+  var mq2 = safeNum(g.MQ2);
+  var mq3 = safeNum(g.MQ3);
+  var status = g.Status || "SAFE";
+  var spread = safeNum(g.SpreadRate);
+  var timeDanger = safeNum(g.TimeToDanger);
+
+  // Gas Cards
+  document.getElementById("mq7").innerHTML = "MQ7 (CO)<br>" + mq7.toFixed(2) + " PPM";
+  document.getElementById("mq2").innerHTML = "MQ2 (Methane, LPG)<br>" + mq2.toFixed(2) + " PPM";
+  document.getElementById("mq3").innerHTML = "MQ3 (Ammonia)<br>" + mq3.toFixed(2) + " PPM";
+
+  // Status Badge
+  var s = document.getElementById("status");
+  s.innerHTML = status;
+  s.className = "status";
+  if (status === "SAFE") s.classList.add("safe");
+  else if (status === "WARNING") s.classList.add("warning");
+  else s.classList.add("danger");
+
+  // Email Alert
+  if ((status === "WARNING" || status === "DANGER") && lastAlertStatus !== status) {
+    var loc = d.Location || {};
+    sendGasAlert(
+      status, mq7, mq2, mq3,
+      safeNum(loc.Latitude) || 18.46393,
+      safeNum(loc.Longitude) || 83.66010
+    );
+    lastAlertStatus = status;
+  }
+  if (status === "SAFE") lastAlertStatus = "";
+
+  // Gas Spread
+  var spreadClass, spreadText;
+  if (spread <= 2) {
+    spreadClass = "green";
+    spreadText = "STABLE ENVIRONMENT (" + spread.toFixed(2) + " PPM/sec)";
+  } else if (spread <= 8) {
+    spreadClass = "yellow";
+    spreadText = "MODERATE RISE (" + spread.toFixed(2) + " PPM/sec)";
+  } else {
+    spreadClass = "red";
+    spreadText = "RAPID GAS SPREAD (" + spread.toFixed(2) + " PPM/sec)";
+  }
+  document.getElementById("spreadStatus").innerHTML =
+    "<span class='" + spreadClass + "'>" + spreadText + "</span>";
+
+  // Danger Prediction
+  var dangerClass = "green";
+  var dangerText = "NO IMMEDIATE RISK";
+  if (timeDanger > 60) {
+    dangerText = "APPROACHING RISK (" + Math.round(timeDanger) + " sec)";
+    dangerClass = "yellow";
+  } else if (timeDanger > 20) {
+    dangerText = "HIGH RISK (" + Math.round(timeDanger) + " sec)";
+    dangerClass = "orange";
+  } else if (timeDanger > 0) {
+    dangerText = "CRITICAL – EVACUATE (" + Math.round(timeDanger) + " sec)";
+    dangerClass = "red";
+  }
+  document.getElementById("dangerStatus").innerHTML =
+    "<span class='" + dangerClass + "'>" + dangerText + "</span>";
+
+  // ---- LiDAR from ESP32/Lidar/ ----
+  var l = d.Lidar || {};
+  var lidarDist = safeNum(l.Distance_cm);
+  var lidarState = l.Status || "UNKNOWN";
+  var lidarText, lidarClass;
+
+  if (lidarState === "PERSON NEAR") {
+    lidarText = "CRITICAL – HUMAN DETECTED (" + lidarDist + " cm)";
+    lidarClass = "red";
+  } else if (lidarState === "OBJECT DETECTED") {
+    lidarText = "WARNING – OBJECT IN PROXIMITY (" + lidarDist + " cm)";
+    lidarClass = "orange";
+  } else if (lidarState === "CLEAR AREA") {
+    lidarText = "AREA CLEAR (" + lidarDist + " cm)";
+    lidarClass = "green";
+  } else {
+    lidarText = "OUT OF RANGE";
+    lidarClass = "yellow";
+  }
+  document.getElementById("lidarStatus").innerHTML =
+    "<span class='" + lidarClass + "'>" + lidarText + "</span>";
+
+  // ---- Location from ESP32/Location/ ----
+  var loc = d.Location || {};
+  var lat = safeNum(loc.Latitude);
+  var lng = safeNum(loc.Longitude);
+  if (lat !== 0 && lng !== 0) {
+    marker.setLatLng([lat, lng]);
+    map.setView([lat, lng], 15);
+  }
+
+});
+
+</script>
+
+</body>
+</html>
